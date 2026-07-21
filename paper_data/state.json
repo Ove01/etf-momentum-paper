@@ -1,9 +1,8 @@
 {
-  "cash": 100000,
+  "cash": 50000,
   "position": null,
   "total_trades": 0,
   "start_date": "2026-07-21",
   "last_trade_date": "2026-07-21",
-  "last_signal": "cash",
-  "equity_history": []
+  "last_signal": "cash"
 }
