@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Virtual env
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Large data files (regenerated on first run)
+data_cyb.csv
+data_nq.csv
+data_sz.csv
+equity_original.csv
+equity_fixed.csv
+
+# Keep paper_data tracked (this IS the state)
+# paper_data/ is NOT ignored - it's the soul of the simulation
+
+# OS
+.DS_Store
+Thumbs.db

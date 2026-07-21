@@ -1,0 +1,56 @@
+name: ETF Momentum Paper Trader
+
+on:
+  schedule:
+    # 北京时间每个交易日 14:50 = UTC 6:50
+    - cron: '50 6 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      reset:
+        description: '重置模拟盘（输入 yes 确认）'
+        type: string
+        default: 'no'
+  push:
+    branches: [main]
+
+jobs:
+  paper-trade:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install akshare pandas requests
+
+      - name: Seed history (first run or reset)
+        if: github.event.inputs.reset == 'yes' || hashFiles('paper_data/price_history.csv') == ''
+        run: |
+          python paper_trader.py --reset --seed 60
+        continue-on-error: true
+
+      - name: Run paper trader
+        run: python paper_trader.py
+        timeout-minutes: 5
+
+      - name: Show daily report
+        run: |
+          echo "::group::Daily Report"
+          cat paper_data/report_*.md 2>/dev/null | tail -50 || echo "No report generated today"
+          echo "::endgroup::"
+
+      - name: Commit & Push
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "📊 Daily update: $(date +%Y-%m-%d)"
+          file_pattern: 'paper_data/*.csv paper_data/*.json paper_data/*.md'
+          commit_user_name: "ETF Paper Trader Bot"
+          commit_user_email: "paper-trader@localhost"
