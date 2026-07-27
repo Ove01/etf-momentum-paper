@@ -16,26 +16,58 @@ CONFIG = {
 }
 
 def fetch_prices_akshare():
+    """Try primary (NAV) then fallback (spot market price) data sources."""
     import akshare as ak
     import pandas as pd
-    today = date.today().strftime("%Y%m%d")
-    week_ago = (date.today() - pd.Timedelta(days=7)).strftime("%Y%m%d")
+    import time
+
     result = {}
-    etf_map = {"159915": "创业板ETF", "513100": "纳指ETF"}
-    for code, name in etf_map.items():
+
+    # --- Method 1: NAV from fund info (preferred, matches seed data) ---
+    try:
+        today = date.today().strftime("%Y%m%d")
+        week_ago = (date.today() - pd.Timedelta(days=7)).strftime("%Y%m%d")
+        for code, name in [("159915", "创业板ETF"), ("513100", "纳指ETF")]:
+            for attempt in range(2):
+                try:
+                    df = ak.fund_etf_fund_info_em(fund=code, start_date=week_ago, end_date=today)
+                    if df.empty: continue
+                    # Try to find date and nav columns regardless of exact names
+                    date_col = [c for c in df.columns if '日期' in str(c) or c == 'date'][0] if any('日期' in str(c) or c == 'date' for c in df.columns) else None
+                    nav_col = [c for c in df.columns if '净值' in str(c) or c == 'nav'][0] if any('净值' in str(c) or c == 'nav' for c in df.columns) else None
+                    if date_col and nav_col:
+                        latest = df.sort_values(date_col).iloc[-1]
+                        result[code] = {
+                            "code": code, "name": name,
+                            "price": float(latest[nav_col]),
+                            "change_pct": 0.0,
+                            "update_time": str(latest[date_col]),
+                        }
+                    break
+                except Exception:
+                    if attempt < 1: time.sleep(3)
+    except Exception as e:
+        print(f"  NAV method failed: {e}")
+
+    # --- Method 2: Spot market price (fallback) ---
+    if not result:
         try:
-            df = ak.fund_etf_fund_info_em(fund=code, start_date=week_ago, end_date=today)
-            if df.empty: continue
-            df = df.rename(columns={"净值日期": "date", "累计净值": "nav"})
-            latest = df.sort_values("date").iloc[-1]
-            result[code] = {
-                "code": code, "name": name,
-                "price": float(latest["nav"]),
-                "change_pct": 0.0,
-                "update_time": str(latest["date"]),
-            }
+            spot = ak.fund_etf_spot_em()
+            for code, name in [("159915", "创业板ETF"), ("513100", "纳指ETF")]:
+                row = spot[spot["代码"] == code]
+                if not row.empty:
+                    result[code] = {
+                        "code": code, "name": name,
+                        "price": float(row.iloc[0]["最新价"]),
+                        "change_pct": float(row.iloc[0].get("涨跌幅", 0)),
+                        "update_time": date.today().isoformat(),
+                    }
         except Exception as e:
-            print(f"  WARNING: fetch {code} failed: {e}")
+            print(f"  Spot method also failed: {e}")
+
+    if not result:
+        raise RuntimeError("All data sources failed")
+
     return result
 
 class PaperTrader:
@@ -199,10 +231,37 @@ class PaperTrader:
 
     def run(self):
         print(f"ETF Momentum Paper Trader | {datetime.now()}")
+        prices = None
         try:
             prices = fetch_prices_akshare()
         except Exception as e:
-            print(f"ERROR: {e}")
+            print(f"ERROR fetching prices: {e}")
+
+        # Fallback: if data fetch failed, use last known prices from history
+        if not prices:
+            print("  Using fallback: last known prices from history...")
+            try:
+                import pandas as pd
+                if self.history_file.exists():
+                    hist = pd.read_csv(self.history_file)
+                    last = hist.iloc[-1]
+                    prices = {}
+                    for code in ["159915", "513100"]:
+                        col = f"{code}_price"
+                        if col in hist.columns:
+                            name = "创业板ETF" if code == "159915" else "纳指ETF"
+                            prices[code] = {
+                                "code": code, "name": name,
+                                "price": float(last[col]),
+                                "change_pct": 0.0,
+                                "update_time": str(last["date"]),
+                            }
+                    print(f"  Fallback loaded: {list(prices.keys())}")
+            except Exception as fe:
+                print(f"  Fallback also failed: {fe}")
+
+        if not prices:
+            print("FATAL: No price data available. Skipping today.")
             return None
         for code, info in prices.items():
             print(f"  {info['name']}({code}): {info['price']:.4f}")
