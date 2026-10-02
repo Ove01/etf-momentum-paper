@@ -1,14 +1,14 @@
 {
-  "cash": 65.69355999999243,
+  "cash": 89.65271999999823,
   "position": {
-    "code": "159915",
-    "name": "创业板ETF",
-    "shares": 15400,
-    "cost": 3.391,
-    "buy_date": "2026-10-01"
+    "code": "513100",
+    "name": "纳指ETF",
+    "shares": 23000,
+    "cost": 2.269,
+    "buy_date": "2026-10-02"
   },
-  "total_trades": 7,
+  "total_trades": 9,
   "start_date": "2026-07-21",
-  "last_trade_date": "2026-10-01",
-  "last_signal": "cyb"
+  "last_trade_date": "2026-10-02",
+  "last_signal": "nq"
 }
