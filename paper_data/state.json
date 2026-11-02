@@ -1,14 +1,8 @@
 {
-  "cash": 235.2719200000065,
-  "position": {
-    "code": "513100",
-    "name": "纳指ETF",
-    "shares": 19200,
-    "cost": 2.375,
-    "buy_date": "2026-10-13"
-  },
-  "total_trades": 13,
+  "cash": 43315.76344000001,
+  "position": null,
+  "total_trades": 14,
   "start_date": "2026-07-21",
-  "last_trade_date": "2026-10-13",
-  "last_signal": "nq"
+  "last_trade_date": "2026-11-02",
+  "last_signal": "cash"
 }
